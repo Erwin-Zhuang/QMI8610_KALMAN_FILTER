@@ -22,7 +22,6 @@
 /* USER CODE BEGIN Includes */
 #include "QMI8610.h"
 #include "AE.h"
-#include "CC2500.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -87,9 +86,6 @@ double droll;
 double dpitch;
 /* QMI8610_Sensor_DATA -------------------------------------------------------*/
 
-/* CC2500 -------------------------------------------------------*/
-HAL_StatusTypeDef flag2=HAL_ERROR;
-/* CC2500 -------------------------------------------------------*/
 
 /* Altitude_DATA -------------------------------------------------------------*/
 int count=0;
@@ -101,14 +97,6 @@ Euler_Angle Forecast_Euler_Angle;
 Euler_Angle Kalman_Euler_Angle;
 /* Altitude_DATA -------------------------------------------------------------*/
 
-
-
-
-/* 发送的数据----------------------------------------------------*/
-uint8_t DATA[]={0x11,0x01,0x02,0X03,0X04,0X05,0X06,0X07,0X08,0X09,0x10,0x11,0x12,0x13,0x14,0x15,0x16};
-uint8_t* TEMP1=(uint8_t*)&Kalman_Euler_Angle.pitch;
-uint8_t* TEMP2=(uint8_t*)&Observe_Euler_Angle.pitch;
-/* 发送的数据----------------------------------------------------*/
 
 /* USER CODE END 0 */
 
@@ -146,27 +134,10 @@ int main(void)
   MX_TIM11_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
-	HAL_Delay(500);
-	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_SET);
-	HAL_Delay(500);
-	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
-	HAL_Delay(500);
-	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_SET);
 	
 	if (QMI8610_DETECT(&hi2c1)==HAL_OK)
 		if (QMI8610_SEETING(&hi2c1)==HAL_OK)
 			flag1=HAL_OK;
-	
-	if(!CC2500_DETECT(&hspi1))
-	{
-		COMMAND(0x30,&hspi1);//RESET
-		COMMAND(0x36,&hspi1);//SIDLE
-		CC2500_SETTING(&hspi1);
-		COMMAND(0x36,&hspi1);//SIDLE
-		flag2=HAL_OK;
-	}
-	
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -196,31 +167,10 @@ int main(void)
 											&dpitch);
 		//卡尔曼滤波计算角度
 
-		DATA[1]=TEMP1[0];
-		DATA[2]=TEMP1[1];
-		DATA[3]=TEMP1[2];
-		DATA[4]=TEMP1[3];
-		DATA[5]=TEMP1[4];
-		DATA[6]=TEMP1[5];
-		DATA[7]=TEMP1[6];
-		DATA[8]=TEMP1[7];
+		if(flag1==HAL_OK) HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
+		//LED指示一下
 		
-		DATA[9]=TEMP2[0];
-		DATA[10]=TEMP2[1];
-		DATA[11]=TEMP2[2];
-		DATA[12]=TEMP2[3];
-		DATA[13]=TEMP2[4];
-		DATA[14]=TEMP2[5];
-		DATA[15]=TEMP2[6];
-		DATA[16]=TEMP2[7];
-		CC2500_DATA_SEND(&hspi1,DATA,18);
-		//发送俯仰角
-		if(flag1==HAL_OK && flag2==HAL_OK)
-		{
-			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_13,GPIO_PIN_RESET);
-		}
-		//LED指示以下
-		double DATA[2]={Kalman_Euler_Angle.pitch,Observe_Euler_Angle.pitch};
+	  	double DATA[2]={Kalman_Euler_Angle.pitch,Observe_Euler_Angle.pitch};
 		HAL_UART_Transmit(&huart1,(uint8_t*)DATA,16,0XFF);
   }
   /* USER CODE END 3 */
